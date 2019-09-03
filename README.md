@@ -1,40 +1,37 @@
-# HelloWorld: A Elixir Demo application
+Desplegar Kubernetes en GCloud usando  Cloud Shell
+ OPEN A NEW CLOUD SHELL SESSION
 
-This is a very simple demo [Elixir](http://elixir-lang.github.io/) application written purely to do the fallowing things:
+1.- Seleccionar el proyecto donde se realizará el despliegue.
+gcloud config set project [PROJECT_ID]
 
-- Play around with Cowboy (Erlang HTTP server).
-- Create a release using [Distillery](https://github.com/bitwalker/distillery) (maybe in combination with Docker).
+2.- Desplegamos el cluster para con nodepool default con 1 nodo.
+gcloud container clusters create sandbox \
+    --num-nodes 1 --zone us-central1-b  
 
-More expirements may fallow (the above list will be updated).
+3.- Desplegamos el noode pool para ingress-nginx con 3 nodos
+gcloud container node-pools create ingress-nginx \
+--cluster=sandbox --enable-autorepair
 
-# Docker
+Instalar Helm y Tiller con RBA 
 
-Building the docker container and run it:
-```
-docker build --rm -t hello_world .
-docker run --rm -d -p 8080:8080 -t hello_world
-```
+Para simplificar la instalación y administración de aplicaciones y recursos de Kubernetes.
 
-# Creating certs (only needed if you dont use Docker)
+1.- Utilizamos el siguiente comando que obtiene la última versión:
+curl -o get_helm.sh https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get
+chmod +x get_helm.sh
+./get_helm.sh
 
-Requirement for creating self-signed certificate is `openssl`. Find out if you have `openssl` installed by running the fallowing:
-```
-$ which openssl
-/usr/bin/openssl
-```
-It returns `openssl not found` if you don't have `openssl` installed.
+2.- Instalación de Tiller con RBAC habilitado
+kubectl create serviceaccount --namespace kube-system tiller
+kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+helm init --service-account tiller
 
-Creating the key and the crt files in `./cert`:
-```
-$ mkdir cert && cd cert
-$ openssl req -newkey rsa:2048 -nodes -keyout hello_world.key -x509 -days 365 -out hello_world.crt -subj "/C=NL/ST= /L= /O= /CN= "
-```
+3.- Iniciamos helt
+helm init
+4.- Dar permisos para RBAC 
+kubectl create clusterrolebinding permissive-binding \
+  --clusterrole=cluster-admin \
+  --user=admin \
+  --user=kubelet \
+  --group=system:serviceaccounts
 
-# TODO
-
-- [x] Use a self-signed SSL sertificate so I can serve using HTTPS.
-- [x] Use Docker.
-- [x] Remove Server Response Header using a Cowboy Stream.
-- [x] Redirect http to https.
-- [ ] Create a docker-compose file.
-- [ ] ~~Use [Conform](https://github.com/bitwalker/conform) for setting run-time configuration.~~ (Experimented with it, but at this time not needed.)
