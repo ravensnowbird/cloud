@@ -79,6 +79,7 @@ Para simplificar la instalación y administración de aplicaciones y recursos de
 ```name: ingress-nginx```
 
 3. Creamos el config map incluido en *configmap.yaml*
+
 ``` 
  kind: ConfigMap
  apiVersion: v1
@@ -91,7 +92,9 @@ Para simplificar la instalación y administración de aplicaciones y recursos de
   body-size: "64m"
   client-max-body-size: "50m"
 ```
+
 4. Agregamos los servcios UDP y TCP incluidos en *5_udp-services-configmap.yaml y 4_tcp-services-configmap.yaml*
+
 ```kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -104,6 +107,7 @@ metadata:
   name: udp-services
   namespace: ingress-nginx
 ```
+
 5. Por ultimo instalamos el kubernetes-ingress-controller / nginx-ingress-controller incluido el *6_install.yaml*
 
 ```apiVersion: extensions/v1beta1
@@ -179,21 +183,21 @@ spec:
             timeoutSeconds: 1
       nodeSelector:
         cloud.google.com/gke-nodepool: "ingress-nginx"
+        apiVersion: v1
 ```
-apiVersion: v1
+
 
 5. Realizamos el despliegue en Kubernetes:
 
 ```
 kubectl apply -f 1_namespace.yaml 2_default-backend.yaml 3_configmap.yaml 4_tcp-services-configmap.yaml 5_udp-services-configmap.yaml 6_install.yaml
 ```
+
 6. Validamos el despliegue en Kubernetes y el servicio ok:
 
     https://console.cloud.google.com/kubernetes/workload?organizationId=439006755624&project=resuelve-sandbox&workload_list_tablesize=50 
     https://console.cloud.google.com/kubernetes/discovery?organizationId=439006755624&project=resuelve-sandbox&service_list_tablesize=50
 	
-El servicio debe estar OK sino es así vuelve a intentar los pasos.
-
 
 # Instalando Cert Manager
 
@@ -214,12 +218,12 @@ gcloud projects add-iam-policy-binding resuelve-sandbox \
     --member=serviceAccount:dns-admin@resuelve-sandbox.iam.gserviceaccount.com \
     --role=roles/dns.admin
 ```
-```
+
 2. Creamos el secret 
 kubectl create secret generic cert-manager-credentials \
+   ```
     --from-file=./gcp-dns-admin.json
     ```
-```
 3.- Instalamos Certmangert
 
 ``` 
@@ -231,43 +235,49 @@ helm install --name cert-manager \
 
 1.- Seleccionar el proyecto de despliegue 
 
-gcloud config set project [PROJECT_ID]
+```gcloud config set project [PROJECT_ID]```
 
 2.- Habilitar las APIS necesarias para el continuo:
 
+``` 
 gcloud services enable container.googleapis.com \
     cloudbuild.googleapis.com \
     sourcerepo.googleapis.com \
     containeranalysis.googleapis.com
+```
 
 3.- Desplegar el clouster para Sandbox
 
+```
 gcloud container clusters create sandbox\
     --num-nodes 1 --zone us-central1-b  
-
+```
 
 5.- Clona el código del repo desde GitHub
-
+```
 cd ~
 git clone https://github.com/resuelve/cloud.git \
     cloud
-
+```
 6.- Creamos la imagen de contenedor con CloudBuild aplicando el siguiente comando:
-
+```
 cd ~/cloud
 COMMIT_ID="$(git rev-parse --short=7 HEAD)"
 gcloud builds submit --tag="gcr.io/${PROJECT_ID}/hello-cloudbuild:${COMMIT_ID}" .
+```
 
 7.- Verificamos imagen en el contenedor:
 
+```
 https://console.cloud.google.com/gcr?_ga=2.175160550.-515079399.1563474278&_gac=1.40177302.1566322914.EAIaIQobChMImc2j1fyR5AIVhcpkCh2zAwsrEAAYASAAEgKxTPD_BwE
 
 Podemos realizar la integración a traves del archivo pero por el momento lo dejamos así
 cloudbuild.yaml 
 
+```
 8.- configurarmos el .yml para envío a Kubernets *kubernetes.yaml.tpl*
 
-````
+```
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -295,11 +305,6 @@ apiVersion: v1
 metadata:
   name: hello-cloudbuild
 spec:
-  
-kind: Ingress
-metadata:
-  name: hello-cloudbuild
-  
   annotations:
     kubernetes.io/tls-acme: "true"
     kubernetes.io/ingress.class: nginx
@@ -337,10 +342,10 @@ apiVersion: extensions/v1beta1
   tls:
   - secretName: guillex-acme
     hosts:
-    - hello-cloudbuild.resuelve.io
-~                                 
+    - hello-cloudbuild.resuelve.io                               
 
   ```
+
 9.- Para realiza el despliegue de la aplicación en el Cluster lanzamos el siguiente comando desde Shell
 
 ```kubectl apply -f kubernetes.yaml.tpl```
@@ -356,4 +361,4 @@ NAME                               READY   STATUS    RESTARTS   AGE
 hello-app-555d9f45f8-jzwbp         1/1     Running   0          20h
 hello-cloudbuild-68848cc9c-s9xtk   1/1     Running   0          114m
 
-´´´
+```
