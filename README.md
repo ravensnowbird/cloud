@@ -1,5 +1,6 @@
 # Desplegar Kubernetes en GCloud usando  Cloud Shell
  OPEN A NEW CLOUD SHELL SESSION
+*https://console.cloud.google.com/home/dashboard?project=resuelve-sandbox&cloudshell=true&_ga=2.113268419.-515079399.1563474278&_gac=1.175959446.1566322914.EAIaIQobChMImc2j1fyR5AIVhcpkCh2zAwsrEAAYASAAEgKxTPD_BwE*
 
 1.- Seleccionar el proyecto donde se realizará el despliegue.
 ```gcloud config set project [PROJECT_ID]```
