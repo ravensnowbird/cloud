@@ -195,6 +195,38 @@ kubectl apply -f 1_namespace.yaml 2_default-backend.yaml 3_configmap.yaml 4_tcp-
 El servicio debe estar OK sino es así vuelve a intentar los pasos.
 
 
+# Instalando Cert Manager
+
+1.- Cranmos la  cuenta de servicio en Shell:
+
+```
+GCP_PROJECT=$(gcloud config get-value project)
+
+gcloud iam service-accounts create dns-admin \
+    --display-name=dns-admin \
+    --project=resuelve-sandbox
+
+gcloud iam service-accounts keys create ./gcp-dns-admin.json \
+    --iam-account=dns-admin@$resuelve-sandbox.iam.gserviceaccount.com \
+    --project=${GCP_PROJECT}
+
+gcloud projects add-iam-policy-binding resuelve-sandbox \
+    --member=serviceAccount:dns-admin@resuelve-sandbox.iam.gserviceaccount.com \
+    --role=roles/dns.admin
+```
+```
+2. Creamos el secret 
+kubectl create secret generic cert-manager-credentials \
+    --from-file=./gcp-dns-admin.json
+    ```
+```
+3.- Instalamos Certmangert
+
+``` 
+helm install --name cert-manager \
+    --namespace kube-system stable/cert-manager --tls
+```
+
 # Desplegando nuestra imagen en Container
 
 1.- Seleccionar el proyecto de despliegue 
