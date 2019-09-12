@@ -1,0 +1,19 @@
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: appresuelve-1.10
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: appresuelve
+        version: "1.10"
+    spec:
+      containers: 
+        - name: appresuelve
+          image: appresuelve:1.10
+          ports:
+            - name: http
+              containerPort: 80
