@@ -389,11 +389,11 @@ Ctrl+C
 
 ```kubectl get crd -l app=kubedb ```
 
-# Implementando Kubernetes Blue/Green Deplyment 
+# Implementando Kubernetes Blue/Green Deployment 
 
 1.-Implementammos un  contenedor con la etiqueta que lleve el nombre y la versión, estas se utilizaran mas adelante para cambiar a la versión Green.
 
-```
+```s
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
