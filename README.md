@@ -201,35 +201,22 @@ kubectl apply -f 1_namespace.yaml 2_default-backend.yaml 3_configmap.yaml 4_tcp-
 
 # Instalando Cert Manager
 
-1.- Cranmos la  cuenta de servicio en Shell:
+1.- Creamos un namespace para correr cert-manager 
 
-```
-GCP_PROJECT=$(gcloud config get-value project)
+```kubectl create namespace cert-manager```
 
-gcloud iam service-accounts create dns-admin \
-    --display-name=dns-admin \
-    --project=resuelve-sandbox
+2.- Deshabilitamos la validación de recursos en el namespacer cert-manager para evitar problema huevo - gallina con cert - manager y webhook 
 
-gcloud iam service-accounts keys create ./gcp-dns-admin.json \
-    --iam-account=dns-admin@$resuelve-sandbox.iam.gserviceaccount.com \
-    --project=${GCP_PROJECT}
-
-gcloud projects add-iam-policy-binding resuelve-sandbox \
-    --member=serviceAccount:dns-admin@resuelve-sandbox.iam.gserviceaccount.com \
-    --role=roles/dns.admin
+```kubectl label namespace cert-manager certmanager.k8s.io/disable-validation=true
 ```
 
-2. Creamos el secret 
-kubectl create secret generic cert-manager-credentials \
-   ```
-    --from-file=./gcp-dns-admin.json
-    ```
-3.- Instalamos Certmangert
+3.-hora podemos seguir adelante e instalar cert-manager. Todos los recursos (CustomResourceDefinitions, cert-manager y el componente webhook) se incluyen en un único archivo de manifiesto YAML:
 
-``` 
-helm install --name cert-manager \
-    --namespace kube-system stable/cert-manager --tls
-```
+```cert-manager.yaml```
+
+Vertificamos la instalación:
+
+```kubectl get pods --namespace cert-manager```
 
 # Desplegando nuestra imagen en Container
 
@@ -340,7 +327,7 @@ spec:
   type: LoadBalancer
 apiVersion: extensions/v1beta1
   tls:
-  - secretName: guillex-acme
+  - secretName: hello-cloudbuild
     hosts:
     - hello-cloudbuild.resuelve.io                               
 
@@ -362,3 +349,130 @@ hello-app-555d9f45f8-jzwbp         1/1     Running   0          20h
 hello-cloudbuild-68848cc9c-s9xtk   1/1     Running   0          114m
 
 ```
+# Instala KubeDB Operator
+
+1.- Instalando dependencias 
+
+```helm repo add appscode https://charts.appscode.com/stable/
+helm repo update
+helm search appscode/kubedb
+
+NAME                   	CHART VERSION	APP VERSION 	DESCRIPTION
+appscode/kubedb        	v0.13.0-rc.0 	v0.13.0-rc.0	KubeDB by AppsCode - Production ready databases on Kubern...
+appscode/kubedb-catalog	v0.13.0-rc.0 	v0.13.0-rc.0	KubeDB Catalog by AppsCode - Catalog for database versions
+´´´
+2.- Instalamos kubedb operator 
+
+``` helm install appscode/kubedb --name kubedb-operator --version v0.13.0-rc.0 \
+  --namespace kube-system
+```
+3.- Esperamos que los cdr esten registrados
+```kubectl get crds -l app=kubedb -w ```
+
+4.- Instalamos el catalogo de versiones de Databases para KubeDB
+
+```helm install appscode/kubedb-catalog --name kubedb-catalog --version v0.13.0-rc.0 \
+  --namespace kube-system ```
+
+# Installing in GKE Cluster
+
+```
+kubectl create clusterrolebinding "cluster-admin-$(whoami)" \
+  --clusterrole=cluster-admin \
+  --user="$(gcloud config get-value core/account)"
+  ´´´
+
+  Verificamos la instalación
+
+```kubectl get pods --all-namespaces -l app=kubedb --watch```
+Ctrl+C
+
+```kubectl get crd -l app=kubedb ```
+
+# Implementando Kubernetes Blue/Green Deplyment 
+
+1.-Implementammos un  contenedor con la etiqueta que lleve el nombre y la versión, estas se utilizaran mas adelante para cambiar a la versión Green.
+
+```
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: nginx-1.10
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        name: nginx
+        version: "1.10"
+    spec:
+      containers: 
+        - name: nginx
+          image: nginx:1.10
+          ports:
+            - name: http
+              containerPort: 80
+```
+Lo encontraremos en el archivo *blue-deploy.yml*
+
+2.- Aplicamos kubectl apply -f blue-deploy.yaml
+
+3.- El servicio es de tipo LoadBalancer, por lo que se puede acceder a través de un Network Load Balancer. Utilizamos las etiquetas de nombre y versión especificadas en la implementación para seleccionar los pods para el servicio.
+
+```
+apiVersion: v1
+kind: Service
+metadata: 
+  name: nginx
+  labels: 
+    name: nginx
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+  selector: 
+    name: nginx
+    version: "1.10"
+  type: LoadBalancer
+```
+4.- Aplicamos un kubectl apply -f service.yaml para crear el servicio
+
+5.- La versión implementada actualmente se puede probar en una ventana separada sondeando el servidor. Esto imprimirá la versión actual de nginx implementada.
+
+``` EXTERNAL_IP=$(kubectl get svc nginx -o jsonpath="{.status.loadBalancer.ingress[*].ip}") 
+    while true; do curl -s http://$EXTERNAL_IP/version | grep nginx; sleep 0.5; done
+```
+6.- Impementamos la versión Green, se creará una nueva mmplementación para actualizar la aplicación y el Service se actualizará para apuntar a la nueva versión. La onfiguración estará dentro de greem-deply.yaml
+
+```
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: nginx-1.11
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        name: nginx
+        version: "1.11"
+    spec:
+      containers: 
+        - name: nginx
+          image: nginx:1.11
+          ports:
+            - name: http
+              containerPort: 80
+
+```
+7.- Creamos el nuevo deployment y hacemos el swicheo a la versión Green:
+
+```sed 's/1\.10/1.11/' blue-deploy.yaml | kubectl apply -f -```
+
+8.- Actualizaremos el Servicio para seleccionar pods del despliegue Green. Esto hará que se establezcan nuevas solicitudes en los nuevos pods. Puede actualizar el archivo directamente o usar una herramienta como sed:
+sed 's/1\.10/1.11/' kubernetes/service.yaml 
+
+8.- Subimos el servicio:
+sed 's/1\.10/1.11/' service.yaml | kubectl apply -f -
+
