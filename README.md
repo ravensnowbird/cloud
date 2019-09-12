@@ -471,8 +471,10 @@ spec:
 ```sed 's/1\.10/1.11/' blue-deploy.yaml | kubectl apply -f -```
 
 8.- Actualizaremos el Servicio para seleccionar pods del despliegue Green. Esto hará que se establezcan nuevas solicitudes en los nuevos pods. Puede actualizar el archivo directamente o usar una herramienta como sed:
-sed 's/1\.10/1.11/' kubernetes/service.yaml 
+
+```sed 's/1\.10/1.11/' service.yaml ```
 
 8.- Subimos el servicio:
-sed 's/1\.10/1.11/' service.yaml | kubectl apply -f -
+
+```sed 's/1\.10/1.11/' service.yaml | kubectl apply -f - ```
 
