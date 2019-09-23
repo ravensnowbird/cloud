@@ -474,7 +474,204 @@ spec:
 
 ```sed 's/1\.10/1.11/' service.yaml ```
 
-8.- Subimos el servicio:
+9.- Subimos el servicio:
 
 ```sed 's/1\.10/1.11/' service.yaml | kubectl apply -f - ```
+
+
+# Manejando Helm releases, GitOps
+
+
+1.- Instalamos Helm and Tiller
+```
+kubectl -n kube-system create sa tiller
+
+kubectl create clusterrolebinding tiller-cluster-rule \
+    --clusterrole=cluster-admin \
+    --serviceaccount=kube-system:tiller
+``` 
+2.-  Damos de alta el usuario administrador dentro del cluster de Google:
+```
+kubectl create clusterrolebinding "cluster-admin-$(whoami)" \
+    --clusterrole=cluster-admin \
+    --user="$(gcloud config get-value core/account)"
+Deploy Tiller in kube-system namespace:
+
+helm init --skip-refresh --upgrade --service-account tiller
+```
+
+3.- Hacemos deploy de Tiller:
+
+helm init --skip-refresh --upgrade --service-account tiller
+
+
+4.  Instalamos Flux
+Apply -f flux_release.yaml
+
+```
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: helmreleases.flux.weave.works
+spec:
+  group: flux.weave.works
+  names:
+    kind: HelmRelease
+    listKind: HelmReleaseList
+    plural: helmreleases
+    shortNames:
+    - hr
+  scope: Namespaced
+  subresources:
+    status: {}
+  version: v1beta1
+  versions:
+    - name: v1beta1
+      served: true
+      storage: true
+  validation:
+    openAPIV3Schema:
+      properties:
+        spec:
+          required: ['chart']
+          properties:
+            releaseName:
+              type: string
+              pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+            timeout:
+              type: integer
+              format: int64
+            resetValues:
+              type: boolean
+            forceUpgrade:
+              type: boolean
+            rollback:
+              type: object
+              properties:
+                enable:
+                  type: boolean
+                force:
+                  type: boolean
+                recreate:
+                  type: boolean
+                disableHooks:
+                  type: boolean
+                timeout:
+                  type: integer
+                  format: int64
+                wait:
+                  type: boolean
+            valueFileSecrets:
+              type: array
+              items:
+                type: object
+                required: ['name']
+                properties:
+                  name:
+                    type: string
+            valuesFrom:
+              type: array
+              items:
+                type: object
+                properties:
+                  configMapKeyRef:
+                    type: object
+                    required: ['name']
+                    properties:
+                      name:
+                        type: string
+                      key:
+                        type: string
+                      optional:
+                        type: boolean
+                  secretKeyRef:
+                    type: object
+                    required: ['name']
+                    properties:
+                      name:
+                        type: string
+                      key:
+                        type: string
+                      optional:
+                        type: boolean
+                  externalSourceRef:
+                    type: object
+                    required: ['url']
+                    properties:
+                      url:
+                        type: string
+                      optional:
+                        type: boolean
+                  chartFileRef:
+                    type: object
+                    required: ['path']
+                    properties:
+                      path:
+                        type: string
+                      optional:
+                        type: boolean
+                oneOf:
+                - required: ['configMapKeyRef']
+                - required: ['secretKeyRef']
+                - required: ['externalSourceRef']
+                - required: ['chartFileRef']
+            values:
+              type: object
+            chart:
+              oneOf:
+              - required: ['git', 'path']
+                properties:
+                  git:
+                    type: string
+                    format: git # not defined by OAS
+                  path:
+                    type: string
+                  ref:
+                    type: string
+                  skipDepUpdate:
+                    type: boolean
+              - required: ['repository', 'name', 'version']
+                properties:
+                  repository:
+                    type: string
+                    format: url # not defined by OAS
+                  name:
+                    type: string
+                  version:
+                    type: string
+                    format: semver # not defined by OAS
+                  chartPullSecret:
+                    properties:
+                      name:
+                        type: string
+```
+
+5.- Agragamos el repositorio del chart de  Flux:
+
+```helm repo add fluxcd https://charts.fluxcd.io```
+
+6.-  Instalar Flux y el operador Helm especificando la  URL:
+
+```
+helm install --name flux \
+--set rbac.create=true \
+--set helmOperator.create=true \
+--set git.url=git@github.com:jvazquezm/helm-operator-get-started \
+--namespace flux \
+fluxcd/flux
+El deamon de Flux sincronisa los repos de git al cluster
+```
+The Flux daemon synchronizes these resources from git to the cluster, y el operador Flux Helm se asegura de que los gráficos Helm se publiquen como se especifica en los recursos.
+
+8.- Al inicio, Flux genera una clave SSH y registra la clave pública. Encuentra la clave pública SSH con:
+
+```
+kubectl -n flux logs deployment/flux | grep identity.pub | cut -d '"' -f2
+```
+
+# GitOps pipeline 
+
+
+
+
 
