@@ -42,17 +42,16 @@ fluxctl identity --k8s-fwd-ns flux
 
 4.- Copia y pega la clave aquí:
 
-```https://github.com/YOURUSER/flux-get-started/settings/keys/new```
-
+```https://github.com/YOURUSER/flux-get-started/settings/keys/new
+```
 Nota: la clave SSH debe configurarse para tener acceso de escritura y lectura en el repositorio. Más específicamente, la clave SSH debe poder crear y actualizar etiquetas.
-
 
 5.- Una vez realizados estos pasos podemos modificar el código y veremos reflejado automáticamente los cambios dentro del Cluster.
 
-Estos cambian 5 minutos aproximadamente en realizarse pero si no eres conocido por esperar pacientemente puedes corre el siguiente comando:
-```fluxctl sync --k8s-fwd-ns flux
+Estos cambian 5 minutos aproximadamente en realizarse pero sino eres conocido por esperar pacientemente puedes corre el siguiente comando:
 ```
-
+fluxctl sync --k8s-fwd-ns flux
+```
 Para finalizar podemos checar los cambios realizados acá:
 
 ```kubectl -n demo port-forward deployment/podinfo 9898:9898 &
