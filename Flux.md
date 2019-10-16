@@ -56,5 +56,7 @@ fluxctl sync --k8s-fwd-ns flux
 ```
 Para finalizar podemos checar los cambios realizados acá:
 
-```kubectl -n demo port-forward deployment/podinfo 9898:9898 &
-curl localhost:9898```
+```
+kubectl -n demo port-forward deployment/podinfo 9898:9898 &
+curl localhost:9898
+```
