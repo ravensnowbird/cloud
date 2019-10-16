@@ -32,7 +32,8 @@ fluxctl install \
 ``` 
 2.- Corremos el siguiente comando para sincronizar Flux:
 
-```kubectl -n flux rollout status deployment/flux
+``` 
+kubectl -n flux rollout status deployment/flux
 ```
 3.- Dar acceso de escritura, Flux genera una clave SSH y registra la clave pública. Encuentre la clave pública SSH instalando fluxctl y ejecutando:
 
@@ -42,7 +43,8 @@ fluxctl identity --k8s-fwd-ns flux
 
 4.- Copia y pega la clave aquí:
 
-```https://github.com/YOURUSER/flux-get-started/settings/keys/new
+``` 
+https://github.com/YOURUSER/flux-get-started/settings/keys/new
 ```
 Nota: la clave SSH debe configurarse para tener acceso de escritura y lectura en el repositorio. Más específicamente, la clave SSH debe poder crear y actualizar etiquetas.
 
